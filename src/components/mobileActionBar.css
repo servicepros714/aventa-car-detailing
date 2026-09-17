@@ -1,0 +1,41 @@
+.mobile-bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .mobile-bar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 90;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(11, 31, 53, 0.97);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(199,207,216,0.18);
+    gap: 10px;
+  }
+  .mobile-bar__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-accent);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+  .mobile-bar__btn--call {
+    background: transparent;
+    border: 1.5px solid var(--chrome);
+    color: #fff;
+  }
+  .mobile-bar__btn--book {
+    background: linear-gradient(180deg, var(--sky-bright), var(--sky));
+    color: #fff;
+  }
+  /* keep content clear of the fixed bar */
+  body { padding-bottom: 72px; }
+}

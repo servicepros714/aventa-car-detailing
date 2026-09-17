@@ -1,0 +1,114 @@
+.services-tabs__head { max-width: 560px; margin-bottom: 44px; }
+.services-tabs__head h2 { font-size: clamp(28px, 3.4vw, 38px); margin: 16px 0 0; }
+
+.services-tabs__layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+  border: 1px solid rgba(11,31,53,0.1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+.services-tabs__list {
+  display: flex;
+  flex-direction: column;
+  background: var(--platinum);
+  border-right: 1px solid rgba(11,31,53,0.1);
+}
+.services-tabs__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 22px 24px;
+  border: none;
+  background: transparent;
+  border-left: 3px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(11,31,53,0.06);
+}
+.services-tabs__tab-name {
+  font-family: var(--font-accent);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+}
+.services-tabs__tab-price {
+  font-family: var(--font-accent);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.services-tabs__tab--active {
+  background: #fff;
+  border-left-color: var(--sky);
+}
+.services-tabs__tab--active .services-tabs__tab-name { color: var(--navy-deep); }
+.services-tabs__tab--active .services-tabs__tab-price { color: var(--steel-blue); }
+
+.services-tabs__panel { padding: 40px 44px; }
+.services-tabs__panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px dashed rgba(11,31,53,0.14);
+}
+.services-tabs__panel-head h3 { font-size: 24px; margin-bottom: 8px; }
+.services-tabs__panel-head p { color: var(--ink-soft); font-size: 15px; max-width: 380px; }
+.services-tabs__price { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.services-tabs__price span {
+  font-family: var(--font-accent);
+  font-weight: 700;
+  font-size: 36px;
+  color: var(--navy-deep);
+}
+.services-tabs__price em { font-style: normal; font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.services-tabs__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+}
+
+.services-tabs__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+.services-tabs__cta-btn { padding: 17px 40px; font-size: 16px; }
+.services-tabs__features li { display: flex; align-items: flex-start; gap: 9px; font-size: 14px; color: var(--ink); }
+.services-tabs__features svg { color: var(--sky); margin-top: 2px; flex-shrink: 0; }
+
+@media (max-width: 860px) {
+  .services-tabs__layout { grid-template-columns: 1fr; }
+
+  .services-tabs__list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .services-tabs__tab {
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    align-items: center;
+    text-align: center;
+    padding: 14px 6px;
+    gap: 3px;
+  }
+  .services-tabs__tab-name { font-size: 12.5px; line-height: 1.25; }
+  .services-tabs__tab-price { font-size: 12px; }
+  .services-tabs__tab--active { border-left: none; border-bottom-color: var(--sky); }
+
+  .services-tabs__panel { padding: 24px 20px; }
+  .services-tabs__panel-head { flex-direction: column; }
+  .services-tabs__price { align-items: flex-start; margin-top: 10px; }
+  .services-tabs__features { grid-template-columns: 1fr; }
+}

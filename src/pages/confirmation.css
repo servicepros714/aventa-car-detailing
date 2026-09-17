@@ -1,0 +1,41 @@
+.confirmation-page {
+  background: var(--platinum);
+  min-height: calc(100vh - var(--nav-height));
+  display: flex;
+  align-items: center;
+  padding: 60px 0;
+}
+.confirmation-card {
+  max-width: 480px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(11,31,53,0.08);
+  padding: 48px 36px;
+  text-align: center;
+}
+.confirmation-card__icon { color: var(--success); margin-bottom: 16px; }
+.confirmation-card h1 { font-size: 26px; margin-bottom: 12px; }
+.confirmation-card p { color: var(--ink-soft); font-size: 15px; }
+
+.confirmation-details {
+  margin-top: 24px;
+  padding: 18px;
+  background: var(--platinum);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+}
+.confirmation-details div { display: flex; align-items: center; gap: 8px; }
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,15 @@
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+main { flex: 1; }
+
+section[id] { scroll-margin-top: var(--nav-height); }
+
+::selection { background: var(--sky); color: #fff; }
+
+.page-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  font-family: var(--font-accent);
+}
