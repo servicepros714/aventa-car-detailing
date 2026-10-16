@@ -43,12 +43,39 @@ bound as `DB`). Deploy with `npx wrangler deploy` from `worker/`.
    - `STRIPE_WEBHOOK_SECRET` — signing secret of the Stripe webhook below
    - `ADMIN_TOKEN` — required by the admin dashboard for GET/PATCH
      `/api/bookings/:id` (kept locally in the gitignored `.admin-token`)
+   - `GHL_WEBHOOK_URL` — GoHighLevel webhook trigger; GHL sends the emails
 3. `VITE_API_URL` in `.env.local` must point at the Worker URL.
 
 Payment flow: checkout creates the booking first (always `Pay Later`, price
 computed by the Worker), then a PaymentIntent for that booking's total. Only
 the Stripe webhook marks a booking `Paid` / `Refunded` — the browser never
-sends prices or payment status.
+sends prices or payment status. The PaymentIntent is attached to a Stripe
+Customer built from the booking (so Stripe shows the booker, not a Link profile).
+
+Notifications: a confirmed booking is posted once to `GHL_WEBHOOK_URL` with the
+portfolio payload (`event_type: "booking_confirmed"`) plus `payment_status`
+(`Pay Later` / `Paid`), `total` and `notes` — on "Confirm Booking — Pay Later"
+(`POST /api/bookings/:id/confirm`) or when the Stripe webhook marks it Paid.
+
+Anti-spam: `BOOKING_LIMITER` (5 booking attempts / IP / minute), max 6 new
+bookings / IP / 24h (`booking_requests`, hashed IPs), and server-side checks
+that the slot exists, isn't past and is within the 21-day window. Going back
+from checkout updates the same unpaid draft booking instead of adding another.
+
+### Stripe test-mode copy
+
+`env.test` in `wrangler.jsonc` deploys `aventa-car-detailing-v2-test` (same
+database — delete test bookings afterwards). Give it test-mode secrets with
+`--env test`, put the `pk_test_` key in the gitignored `.env.stripetest`, then:
+
+```bash
+cd worker && npx wrangler deploy --env test && cd ..
+npx vite build --mode stripetest --outDir dist-test
+npx wrangler pages deploy dist-test --project-name aventa-car-detailing-v2 --branch stripe-test
+```
+
+Test site: https://stripe-test.aventa-car-detailing-v2.pages.dev (card `4242 4242 4242 4242`).
+The test webhook destination must be in the same Stripe sandbox as the test keys.
 
 ## 4. Stripe
 
