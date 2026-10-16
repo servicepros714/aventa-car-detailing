@@ -12,15 +12,16 @@ export function getStripe() {
 const API_URL = import.meta.env.VITE_API_URL
 
 /**
- * Asks the Worker to create a PaymentIntent for the given total (in dollars).
- * The Worker sets automatic_payment_methods[enabled]=true server-side so
- * Link / Apple Pay / Google Pay all work without listing payment_method_types.
+ * Asks the Worker to create a PaymentIntent for an existing booking. The Worker
+ * charges the booking's server-computed total (the coupon is re-checked there)
+ * and sets automatic_payment_methods[enabled]=true so Link / Apple Pay /
+ * Google Pay all work without listing payment_method_types.
  */
-export async function createPaymentIntent({ amount, bookingDraft, couponApplied }) {
+export async function createPaymentIntent({ bookingId, coupon }) {
   const res = await fetch(`${API_URL}/api/create-payment-intent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, bookingDraft, couponApplied }),
+    body: JSON.stringify({ bookingId, coupon }),
   })
   if (!res.ok) throw new Error('Could not start checkout. Please try again.')
   return res.json() // { clientSecret }

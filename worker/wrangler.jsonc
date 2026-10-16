@@ -1,0 +1,15 @@
+{
+  "name": "aventa-car-detailing-v2",
+  "main": "index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "detailing-bookings-remoticojobs",
+      "database_id": "5fe3754a-73bd-47a1-82cf-454e2712ab16"
+    }
+  ]
+  // Secrets (not stored here): STRIPE_SECRET_KEY
+  // — set with `npx wrangler secret put STRIPE_SECRET_KEY`
+}

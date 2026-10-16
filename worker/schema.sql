@@ -1,4 +1,4 @@
--- Shared database: detailing-bookings (account austin80565)
+-- Shared database: detailing-bookings-remoticojobs
 -- Uses IF NOT EXISTS for cross-site safety — safe to run against the
 -- existing shared database without affecting other sites.
 

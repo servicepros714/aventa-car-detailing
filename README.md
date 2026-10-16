@@ -11,8 +11,8 @@ Google Pay, Cloudflare Pages + GitHub Actions.
 | Business | Aventa Car Detailing (Anaheim, CA) |
 | Source tag | `aventa-anaheim` |
 | Booking ID prefix | `AVT-` |
-| Worker URL (suggested) | `aventa-detailing-worker.austin80565.workers.dev` |
-| Cloudflare Pages project | `aventa-car-detailing` |
+| Worker | `aventa-car-detailing-v2` → `aventa-car-detailing-v2.remoticojobs.workers.dev` |
+| Cloudflare Pages project | `aventa-car-detailing-v2` (domain: aventacardetailinganaheim.site) |
 
 > `premium-anaheim` is already used by Premium Detailing Solutions (Anaheim) —
 > Aventa is a separate business, hence the distinct `aventa-anaheim` tag.
@@ -26,19 +26,29 @@ Google Pay, Cloudflare Pages + GitHub Actions.
 
 ## 2. Cloudflare Pages
 
-1. Create a Pages project named `aventa-car-detailing` (or update
+1. Create a Pages project named `aventa-car-detailing-v2` (or update
    `.github/workflows/deploy.yml` if you name it differently).
 2. Build command `npm run build`, output directory `dist`.
 3. Connect the custom domain once DNS/Apple Pay domain verification is done.
 
-## 3. Cloudflare Worker (dashboard, not CLI)
+## 3. Cloudflare Worker
 
-1. Create a Worker named `aventa-detailing-worker` and paste in `worker/index.js`.
-2. Bind the shared D1 database `detailing-bookings` as `DB` (Settings > Bindings).
-3. Run `worker/schema.sql` against the shared database once (safe — uses
+Config lives in `worker/wrangler.jsonc` (D1 `detailing-bookings-remoticojobs`
+bound as `DB`). Deploy with `npx wrangler deploy` from `worker/`.
+
+1. Run `worker/schema.sql` against the shared database once (safe — uses
    `IF NOT EXISTS`, won't affect other sites' data).
-4. Add `STRIPE_SECRET_KEY` as an encrypted Worker secret.
-5. Set the Worker's route/custom domain to match `VITE_API_URL` in `.env.local`.
+2. Set the secrets with `npx wrangler secret put <NAME>`:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET` — signing secret of the Stripe webhook below
+   - `ADMIN_TOKEN` — required by the admin dashboard for GET/PATCH
+     `/api/bookings/:id` (kept locally in the gitignored `.admin-token`)
+3. `VITE_API_URL` in `.env.local` must point at the Worker URL.
+
+Payment flow: checkout creates the booking first (always `Pay Later`, price
+computed by the Worker), then a PaymentIntent for that booking's total. Only
+the Stripe webhook marks a booking `Paid` / `Refunded` — the browser never
+sends prices or payment status.
 
 ## 4. Stripe
 
@@ -47,7 +57,11 @@ Google Pay, Cloudflare Pages + GitHub Actions.
 2. `automatic_payment_methods[enabled]=true` is already set server-side in
    the Worker — this is what makes Link/Apple Pay/Google Pay work without
    listing `payment_method_types[]`.
-3. Complete Apple Pay domain verification for the production domain
+3. Add a webhook destination for
+   `https://aventa-car-detailing-v2.remoticojobs.workers.dev/api/stripe-webhook`
+   with events `payment_intent.succeeded` and `charge.refunded`, and set its
+   signing secret as `STRIPE_WEBHOOK_SECRET` on the Worker.
+4. Complete Apple Pay domain verification for the production domain
    (infra step you handle outside this repo).
 
 ## 5. Local development
@@ -57,17 +71,17 @@ npm install
 npm run dev
 ```
 
-`.env.local` is committed with placeholder values — swap in the real
-`VITE_API_URL` and `VITE_STRIPE_PUBLISHABLE_KEY` once the Worker and Stripe
-are live. `.env` (if you use one) stays gitignored.
+`.env.local` is committed with the live `VITE_API_URL` and
+`VITE_STRIPE_PUBLISHABLE_KEY` (both safe to expose client-side). `.env` (if you use one) stays gitignored.
 
 ## 6. Admin dashboard compatibility
 
 The Worker's `PATCH /api/bookings/:id` endpoint accepts the shared
 `PATCHABLE` field set (`status`, `payment_status`, `reschedule_date`,
 `reschedule_time`, `original_date`, `original_time`, `notes2`), so this site
-is reschedule-compatible with the existing portfolio admin dashboard out of
-the box — no extra wiring needed on the dashboard side.
+is reschedule-compatible with the existing portfolio admin dashboard. The
+dashboard must send `Authorization: Bearer <ADMIN_TOKEN>` for GET/PATCH
+`/api/bookings/:id`, same as Apex.
 
 ## What's different from the rest of the portfolio (by design)
 

@@ -1,19 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import React from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Phone, Calendar } from 'lucide-react'
 import { business } from '../lib/siteConfig'
-import { getBooking } from '../lib/bookingDb'
 import './confirmation.css'
 
 export default function Confirmation() {
   const [params] = useSearchParams()
   const id = params.get('id')
-  const [details, setDetails] = useState(null)
-
-  useEffect(() => {
-    if (!id) return
-    getBooking(id).then(setDetails).catch(() => {})
-  }, [id])
+  // Passed from checkout (the Worker's create-booking response); booking reads are admin-only.
+  const details = useLocation().state?.details ?? null
 
   return (
     <div className="confirmation-page">

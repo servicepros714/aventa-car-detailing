@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Elements } from '@stripe/react-stripe-js'
 import toast from 'react-hot-toast'
 import { Tag, Check } from 'lucide-react'
 import { useBooking } from '../lib/BookingContext'
 import { services, PREPAY_COUPON } from '../lib/siteConfig'
-import { createBooking, markBookingPaid } from '../lib/bookingDb'
+import { createBooking } from '../lib/bookingDb'
 import { getStripe, createPaymentIntent, priceWithCoupon } from '../lib/stripe'
 import CheckoutForm from './CheckoutForm'
 import './checkout.css'
@@ -31,17 +31,49 @@ export default function Checkout() {
   const subtotal = (selectedService?.price || 0) + (booking.addExterior ? exteriorAddOn.price : 0)
   const total = priceWithCoupon(subtotal, booking.couponApplied)
 
+  // The booking is saved once (as 'Pay Later') before any payment is taken, so the
+  // PaymentIntent can carry its id and the Stripe webhook can mark it Paid.
+  const bookingPromise = useRef(null)
+  const ensureBooking = () => {
+    if (!bookingPromise.current) {
+      bookingPromise.current = createBooking({
+        date: booking.date,
+        time: booking.time,
+        serviceId: booking.serviceId,
+        exteriorAddOn: booking.addExterior,
+        coupon: booking.couponApplied ? PREPAY_COUPON.code : null,
+        name: booking.fullName,
+        phone: booking.phone,
+        email: booking.email,
+        vehicle: booking.vehicle,
+        address: booking.address,
+        notes: booking.notes,
+      }).catch((err) => {
+        bookingPromise.current = null
+        toast.error(err.status === 409 ? err.message : 'We could not save your booking. Please try again or call us.')
+        throw err
+      })
+    }
+    return bookingPromise.current
+  }
+
   useEffect(() => {
     if (booking.payLater || !selectedService) return
-    createPaymentIntent({
-      amount: total,
-      bookingDraft: booking,
-      couponApplied: booking.couponApplied,
-    })
-      .then((res) => setClientSecret(res.clientSecret))
-      .catch(() => toast.error('Could not start checkout. Please refresh and try again.'))
+    let cancelled = false
+    setClientSecret(null)
+    ensureBooking()
+      .then((created) => createPaymentIntent({
+        bookingId: created.id,
+        coupon: booking.couponApplied ? PREPAY_COUPON.code : null,
+      }).catch((err) => {
+        toast.error('Could not start checkout. Please refresh and try again.')
+        throw err
+      }))
+      .then((res) => { if (!cancelled) setClientSecret(res.clientSecret) })
+      .catch(() => {})
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total, booking.payLater])
+  }, [booking.couponApplied, booking.payLater])
 
   const applyCoupon = () => {
     if (couponInput.trim().toUpperCase() === PREPAY_COUPON.code) {
@@ -52,33 +84,12 @@ export default function Checkout() {
     }
   }
 
-  const finalizeBooking = async (paymentStatus) => {
-    try {
-      const created = await createBooking({
-        date: booking.date,
-        time: booking.time,
-        service: `${selectedService.name}${booking.addExterior ? ' + Exterior Wash' : ''}`,
-        name: booking.fullName,
-        phone: booking.phone,
-        email: booking.email,
-        vehicle: booking.vehicle,
-        address: booking.address,
-        notes: booking.notes,
-        payment_status: paymentStatus,
-      })
-      return created
-    } catch (err) {
-      toast.error('We could not save your booking. Please try again or call us.')
-      throw err
-    }
-  }
-
+  // Payment status is set to 'Paid' by the Stripe webhook, not by the browser.
   const handlePaymentSuccess = async () => {
     try {
-      const created = await finalizeBooking('Paid')
-      if (created?.id) await markBookingPaid(created.id, 'Paid').catch(() => {})
+      const created = await ensureBooking()
       toast.success('Payment confirmed — booking locked in!')
-      navigate(`/confirmation?id=${created?.id ?? ''}`)
+      navigate(`/confirmation?id=${created.id}`, { state: { details: created } })
       resetBooking()
     } catch {
       // toast already shown
@@ -88,9 +99,9 @@ export default function Checkout() {
   const handlePayLater = async () => {
     setSubmittingPayLater(true)
     try {
-      const created = await finalizeBooking('Pay Later')
+      const created = await ensureBooking()
       toast.success('Booking confirmed — pay at appointment.')
-      navigate(`/confirmation?id=${created?.id ?? ''}`)
+      navigate(`/confirmation?id=${created.id}`, { state: { details: created } })
       resetBooking()
     } catch {
       // toast already shown
@@ -126,7 +137,7 @@ export default function Checkout() {
 
           {!booking.payLater ? (
             clientSecret ? (
-              <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+              <Elements key={clientSecret} stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
                 <CheckoutForm clientSecret={clientSecret} onSuccess={handlePaymentSuccess} processing={processing} setProcessing={setProcessing} />
               </Elements>
             ) : (

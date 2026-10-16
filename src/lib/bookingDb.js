@@ -1,6 +1,7 @@
-// Booking API client — talks to the Cloudflare Worker backed by the shared
-// `detailing-bookings` D1 database. All requests are source-scoped to
-// SOURCE_TAG so this site only ever sees/affects its own rows.
+// Booking API client — talks to the Cloudflare Worker backed by the
+// `detailing-bookings-remoticojobs` D1 database. The Worker scopes every
+// request to this site's source tag, so this site only ever sees its own rows.
+// Prices and payment status are decided by the Worker, never sent from here.
 
 import { SOURCE_TAG } from './siteConfig'
 
@@ -12,8 +13,10 @@ async function request(path, options = {}) {
     ...options,
   })
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Booking API error (${res.status}): ${text || res.statusText}`)
+    const data = await res.json().catch(() => null)
+    const err = new Error(data?.error || `Booking API error (${res.status})`)
+    err.status = res.status
+    throw err
   }
   const contentType = res.headers.get('content-type') || ''
   return contentType.includes('application/json') ? res.json() : null
@@ -25,23 +28,13 @@ export async function getBookedSlots(date) {
   return data?.bookedSlots ?? []
 }
 
-/** Creates a new booking. Returns the created booking record including its id. */
+/**
+ * Creates a new booking (always 'Pay Later' until the Stripe webhook confirms payment).
+ * Returns { id, date, time, service, address, subtotal, coupon, total }.
+ */
 export async function createBooking(booking) {
   return request('/api/bookings', {
     method: 'POST',
-    body: JSON.stringify({ ...booking, source: SOURCE_TAG }),
+    body: JSON.stringify(booking),
   })
-}
-
-/** Marks a booking's payment status after a successful Stripe confirmation. */
-export async function markBookingPaid(bookingId, paymentStatus) {
-  return request(`/api/bookings/${bookingId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ payment_status: paymentStatus }),
-  })
-}
-
-/** Fetches a single booking by id, for the confirmation page. */
-export async function getBooking(bookingId) {
-  return request(`/api/bookings/${bookingId}?source=${SOURCE_TAG}`)
 }
