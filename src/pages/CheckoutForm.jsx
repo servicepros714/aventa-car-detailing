@@ -21,7 +21,7 @@ const elementStyle = {
   },
 }
 
-export default function CheckoutForm({ clientSecret, onSuccess, processing, setProcessing }) {
+export default function CheckoutForm({ clientSecret, billingDetails, onSuccess, processing, setProcessing }) {
   const stripe = useStripe()
   const elements = useElements()
   const [cardError, setCardError] = useState('')
@@ -50,7 +50,8 @@ export default function CheckoutForm({ clientSecret, onSuccess, processing, setP
 
     const cardNumberElement = elements.getElement(CardNumberElement)
     const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: { card: cardNumberElement },
+      // The booking's contact details, not whatever Link / browser autofill would supply.
+      payment_method: { card: cardNumberElement, billing_details: billingDetails },
     })
 
     setProcessing(false)

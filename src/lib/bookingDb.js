@@ -38,3 +38,11 @@ export async function createBooking(booking) {
     body: JSON.stringify(booking),
   })
 }
+
+/** Confirms a Pay Later booking, which triggers the booking-confirmation notification. */
+export async function confirmPayLater(bookingId, email) {
+  return request(`/api/bookings/${bookingId}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}

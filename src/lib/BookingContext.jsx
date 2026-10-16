@@ -16,6 +16,7 @@ const initialState = {
   notes: '',
   couponApplied: false,
   payLater: false,
+  draftBookingId: null, // unpaid booking created by checkout; reused if the customer goes back and edits
 }
 
 export function BookingProvider({ children }) {

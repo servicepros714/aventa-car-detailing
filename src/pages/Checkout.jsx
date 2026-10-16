@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { Tag, Check } from 'lucide-react'
 import { useBooking } from '../lib/BookingContext'
 import { services, PREPAY_COUPON } from '../lib/siteConfig'
-import { createBooking } from '../lib/bookingDb'
+import { createBooking, confirmPayLater } from '../lib/bookingDb'
 import { getStripe, createPaymentIntent, priceWithCoupon } from '../lib/stripe'
 import CheckoutForm from './CheckoutForm'
 import './checkout.css'
@@ -48,9 +48,14 @@ export default function Checkout() {
         vehicle: booking.vehicle,
         address: booking.address,
         notes: booking.notes,
+        replaceId: booking.draftBookingId,
+      }).then((created) => {
+        updateBooking({ draftBookingId: created.id })
+        return created
       }).catch((err) => {
         bookingPromise.current = null
-        toast.error(err.status === 409 ? err.message : 'We could not save your booking. Please try again or call us.')
+        // 4xx messages (slot taken, booking limit, invalid time) come from the Worker and are customer-facing.
+        toast.error(err.status >= 400 && err.status < 500 ? err.message : 'We could not save your booking. Please try again or call us.')
         throw err
       })
     }
@@ -100,6 +105,8 @@ export default function Checkout() {
     setSubmittingPayLater(true)
     try {
       const created = await ensureBooking()
+      // Booking is saved either way; a failed confirmation only means the notification may not go out.
+      await confirmPayLater(created.id, booking.email).catch(() => {})
       toast.success('Booking confirmed — pay at appointment.')
       navigate(`/confirmation?id=${created.id}`, { state: { details: created } })
       resetBooking()
@@ -138,7 +145,13 @@ export default function Checkout() {
           {!booking.payLater ? (
             clientSecret ? (
               <Elements key={clientSecret} stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-                <CheckoutForm clientSecret={clientSecret} onSuccess={handlePaymentSuccess} processing={processing} setProcessing={setProcessing} />
+                <CheckoutForm
+                  clientSecret={clientSecret}
+                  billingDetails={{ name: booking.fullName, email: booking.email, phone: booking.phone }}
+                  onSuccess={handlePaymentSuccess}
+                  processing={processing}
+                  setProcessing={setProcessing}
+                />
               </Elements>
             ) : (
               <div className="checkout-form__loading">Loading secure payment form…</div>

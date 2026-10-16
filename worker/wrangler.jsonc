@@ -9,7 +9,38 @@
       "database_name": "detailing-bookings-remoticojobs",
       "database_id": "5fe3754a-73bd-47a1-82cf-454e2712ab16"
     }
-  ]
-  // Secrets (not stored here): STRIPE_SECRET_KEY
-  // — set with `npx wrangler secret put STRIPE_SECRET_KEY`
+  ],
+  // Anti-spam: max 5 POST /api/bookings per IP per minute.
+  // namespace_id must be unique per Cloudflare account (don't reuse it in other Workers).
+  "ratelimits": [
+    {
+      "name": "BOOKING_LIMITER",
+      "namespace_id": "71401",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+  // Secrets (not stored here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, ADMIN_TOKEN, GHL_WEBHOOK_URL
+  // — set with `npx wrangler secret put <NAME>`
+
+  "env": {
+    // Stripe TEST-mode copy: `npx wrangler deploy --env test`, secrets with `--env test`.
+    // Same D1 database as live (bookings use the same source tag) — delete test rows after testing.
+    "test": {
+      "name": "aventa-car-detailing-v2-test",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "detailing-bookings-remoticojobs",
+          "database_id": "5fe3754a-73bd-47a1-82cf-454e2712ab16"
+        }
+      ],
+      "ratelimits": [
+        {
+          "name": "BOOKING_LIMITER",
+          "namespace_id": "71402",
+          "simple": { "limit": 5, "period": 60 }
+        }
+      ]
+    }
+  }
 }
