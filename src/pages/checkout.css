@@ -64,20 +64,8 @@
 }
 .checkout-form__loading { color: var(--ink-soft); font-size: 14px; padding: 20px 0; }
 
-.checkout-paylater p { font-size: 14px; color: var(--ink-soft); margin-bottom: 16px; }
-
-.checkout-page__paylater-toggle {
-  display: block;
-  margin: 20px auto 0;
-  background: none;
-  border: none;
-  color: var(--steel-blue);
-  font-family: var(--font-accent);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  text-decoration: underline;
-}
+.checkout-paylater { margin-top: 20px; }
+.checkout-paylater p { font-size: 13px; color: var(--ink-soft); margin-top: 10px; text-align: center; }
 
 .checkout-page__summary {
   background: var(--navy-deep);

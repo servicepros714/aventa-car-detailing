@@ -7,10 +7,14 @@
     {
       "binding": "DB",
       "database_name": "detailing-bookings-remoticojobs",
-      "database_id": "5fe3754a-73bd-47a1-82cf-454e2712ab16"
+      "database_id": "eb75d203-a2ac-406b-aa74-81c3060c21ab"
     }
   ],
-  // Anti-spam: max 5 POST /api/bookings per IP per minute.
+  // Per-IP booking limits (5/min via BOOKING_LIMITER, 6 new bookings/24h) are OFF on the
+  // live site. Set to "on" to re-enable them, e.g. if spam bookings show up.
+  "vars": { "BOOKING_LIMITS": "off" },
+
+  // Rate limiter used when BOOKING_LIMITS is on: max 5 POST /api/bookings per IP per minute.
   // namespace_id must be unique per Cloudflare account (don't reuse it in other Workers).
   "ratelimits": [
     {
@@ -27,11 +31,12 @@
     // Same D1 database as live (bookings use the same source tag) — delete test rows after testing.
     "test": {
       "name": "aventa-car-detailing-v2-test",
+      "vars": { "BOOKING_LIMITS": "off" }, // vars aren't inherited from the top level — keep in sync with live
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "detailing-bookings-remoticojobs",
-          "database_id": "5fe3754a-73bd-47a1-82cf-454e2712ab16"
+          "database_id": "eb75d203-a2ac-406b-aa74-81c3060c21ab"
         }
       ],
       "ratelimits": [

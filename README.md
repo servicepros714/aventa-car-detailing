@@ -46,8 +46,15 @@ bound as `DB`). Deploy with `npx wrangler deploy` from `worker/`.
    - `GHL_WEBHOOK_URL` — GoHighLevel webhook trigger; GHL sends the emails
 3. `VITE_API_URL` in `.env.local` must point at the Worker URL.
 
-Payment flow: checkout creates the booking first (always `Pay Later`, price
-computed by the Worker), then a PaymentIntent for that booking's total. Only
+Database layout: `bookings` is identical to the portfolio's `detailing-bookings`
+(Luna Glow etc.) — see `worker/schema.sql`. Statuses follow the same pattern:
+checkout draft `Pending` / `Incomplete`; Pay Later `Confirmed` / `Pay Later` with
+`notes2 = 'Pay Later'`; paid `Confirmed` / `Paid`. IDs are `AVT-` + 8 hex, `created_at`
+is UTC `YYYY-MM-DD HH:MM:SS`. Prices and the Stripe PaymentIntent live in
+`booking_payments` (shared with Apex, which uses the same database).
+
+Payment flow: checkout creates the booking first (price computed by the Worker),
+then a PaymentIntent for that booking's total. Only
 the Stripe webhook marks a booking `Paid` / `Refunded` — the browser never
 sends prices or payment status. The PaymentIntent is attached to a Stripe
 Customer built from the booking (so Stripe shows the booker, not a Link profile).
@@ -57,7 +64,7 @@ portfolio payload (`event_type: "booking_confirmed"`) plus `payment_status`
 (`Pay Later` / `Paid`), `total` and `notes` — on "Confirm Booking — Pay Later"
 (`POST /api/bookings/:id/confirm`) or when the Stripe webhook marks it Paid.
 
-Anti-spam: `BOOKING_LIMITER` (5 booking attempts / IP / minute), max 6 new
+Anti-spam (off on the live site — `BOOKING_LIMITS` var): `BOOKING_LIMITER` (5 booking attempts / IP / minute), max 6 new
 bookings / IP / 24h (`booking_requests`, hashed IPs), and server-side checks
 that the slot exists, isn't past and is within the 21-day window. Going back
 from checkout updates the same unpaid draft booking instead of adding another.

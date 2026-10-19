@@ -63,7 +63,7 @@ export default function Checkout() {
   }
 
   useEffect(() => {
-    if (booking.payLater || !selectedService) return
+    if (!selectedService) return
     let cancelled = false
     setClientSecret(null)
     ensureBooking()
@@ -78,7 +78,7 @@ export default function Checkout() {
       .catch(() => {})
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking.couponApplied, booking.payLater])
+  }, [booking.couponApplied])
 
   const applyCoupon = () => {
     if (couponInput.trim().toUpperCase() === PREPAY_COUPON.code) {
@@ -105,8 +105,11 @@ export default function Checkout() {
     setSubmittingPayLater(true)
     try {
       const created = await ensureBooking()
-      // Booking is saved either way; a failed confirmation only means the notification may not go out.
-      await confirmPayLater(created.id, booking.email).catch(() => {})
+      // Confirming turns the 'Pending' draft into a Confirmed / Pay Later booking (and notifies GHL).
+      await confirmPayLater(created.id, booking.email).catch((err) => {
+        toast.error('We could not confirm your booking. Please try again or call us.')
+        throw err
+      })
       toast.success('Booking confirmed — pay at appointment.')
       navigate(`/confirmation?id=${created.id}`, { state: { details: created } })
       resetBooking()
@@ -142,36 +145,33 @@ export default function Checkout() {
             </button>
           </div>
 
-          {!booking.payLater ? (
-            clientSecret ? (
-              <Elements key={clientSecret} stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-                <CheckoutForm
-                  clientSecret={clientSecret}
-                  billingDetails={{ name: booking.fullName, email: booking.email, phone: booking.phone }}
-                  onSuccess={handlePaymentSuccess}
-                  processing={processing}
-                  setProcessing={setProcessing}
-                />
-              </Elements>
-            ) : (
-              <div className="checkout-form__loading">Loading secure payment form…</div>
-            )
+          {clientSecret ? (
+            <Elements key={clientSecret} stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+              <CheckoutForm
+                clientSecret={clientSecret}
+                billingDetails={{ name: booking.fullName, email: booking.email, phone: booking.phone }}
+                onSuccess={handlePaymentSuccess}
+                processing={processing}
+                setProcessing={setProcessing}
+              />
+            </Elements>
           ) : (
-            <div className="checkout-paylater">
-              <p>You've chosen to pay at your appointment. We'll confirm your booking now and collect payment when we arrive.</p>
-              <button className="btn btn-primary btn-block" onClick={handlePayLater} disabled={submittingPayLater}>
-                {submittingPayLater ? 'Confirming…' : 'Confirm Booking — Pay Later'}
-              </button>
-            </div>
+            <div className="checkout-form__loading">Loading secure payment form…</div>
           )}
 
-          <button
-            type="button"
-            className="checkout-page__paylater-toggle"
-            onClick={() => updateBooking({ payLater: !booking.payLater })}
-          >
-            {booking.payLater ? 'Actually, I\'ll pay online now' : 'Prefer to pay later? Click here'}
-          </button>
+          {/* One click, like the rest of the portfolio: confirms the booking and pays at the appointment. */}
+          <div className="checkout-paylater">
+            <div className="checkout-form__divider"><span>Or</span></div>
+            <button
+              type="button"
+              className="btn btn-outline btn-block"
+              onClick={handlePayLater}
+              disabled={submittingPayLater || processing}
+            >
+              {submittingPayLater ? 'Confirming…' : "I'll Pay Later — Confirm Booking"}
+            </button>
+            <p>No payment now — we'll collect payment at your appointment.</p>
+          </div>
         </div>
 
         <aside className="checkout-page__summary">
@@ -184,7 +184,7 @@ export default function Checkout() {
             {booking.couponApplied && (
               <div className="price-bar__row price-bar__row--discount"><span>{PREPAY_COUPON.code} discount</span><span>-${PREPAY_COUPON.amountOff}</span></div>
             )}
-            <div className="price-bar__total"><span>Total {booking.payLater ? 'Due at Appointment' : 'Due Today'}</span><span>${total}</span></div>
+            <div className="price-bar__total"><span>Total</span><span>${total}</span></div>
           </div>
           <div className="checkout-page__appt">
             <strong>{booking.dateLabel}</strong>

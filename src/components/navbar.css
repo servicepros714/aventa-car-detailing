@@ -1,8 +1,10 @@
+/* Solid navy at all times: the header sits above the page (not over the hero), so a
+   transparent bar would put its white links on the light page background. */
 .nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(11, 31, 53, 0.0);
+  background: var(--navy-deep);
   transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 .nav::after {
@@ -73,6 +75,7 @@
   font-weight: 600;
   font-size: 14px;
   color: var(--chrome-light);
+  white-space: nowrap;
 }
 .nav__phone:hover { color: var(--sky-bright); }
 

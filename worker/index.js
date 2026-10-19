@@ -7,6 +7,12 @@
 // Table `booking_requests` (worker/schema.sql) backs the per-IP daily booking cap.
 // Table `booking_notifications` makes sure each booking is sent to GHL only once.
 //
+// `bookings` follows the shared portfolio layout (same as Luna Glow):
+//   checkout draft  -> status 'Pending',   payment_status 'Incomplete'
+//   Pay Later       -> status 'Confirmed', payment_status 'Pay Later', notes2 'Pay Later'
+//   paid (webhook)  -> status 'Confirmed', payment_status 'Paid'
+// Prices and the Stripe PaymentIntent live in `booking_payments` (one row per booking).
+//
 // Secrets (set with `npx wrangler secret put <NAME>`):
 //   STRIPE_SECRET_KEY      Stripe secret key
 //   STRIPE_WEBHOOK_SECRET  signing secret of the Stripe webhook -> /api/stripe-webhook
@@ -69,10 +75,20 @@ function json(data, status = 200) {
   })
 }
 
+// "AVT-" + 8 uppercase hex characters, like the portfolio's "LG-D7D7B19B".
 function newBookingId() {
-  const rand = Math.random().toString(36).slice(2, 7).toUpperCase()
-  return `${PREFIX}${Date.now().toString(36).toUpperCase()}${rand}`
+  const bytes = crypto.getRandomValues(new Uint8Array(4))
+  return PREFIX + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
+
+// UTC "YYYY-MM-DD HH:MM:SS" — the portfolio's created_at format (SQLite CURRENT_TIMESTAMP).
+function sqlTimestamp(date = new Date()) {
+  return date.toISOString().replace('T', ' ').slice(0, 19)
+}
+
+const BOOKING_WITH_PAYMENT = `SELECT b.*, p.subtotal, p.coupon, p.total, p.payment_intent_id
+  FROM bookings b LEFT JOIN booking_payments p ON p.booking_id = b.id
+  WHERE b.id = ? AND b.source = ?`
 
 // Applies a coupon to a subtotal -> { coupon, total } (whole dollars).
 function applyCoupon(subtotal, code) {
@@ -121,10 +137,9 @@ async function sha256Hex(text) {
 // details. Only reused when it's still unpaid and the email or phone matches.
 async function findReplaceableDraft(env, body) {
   if (!body.replaceId) return null
-  const row = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
-    .bind(body.replaceId, SOURCE).first()
+  const row = await env.DB.prepare(BOOKING_WITH_PAYMENT).bind(body.replaceId, SOURCE).first()
   if (!row || (row.email !== body.email && row.phone !== body.phone)) return null
-  if (row.payment_status !== 'Pay Later' || row.status === 'Cancelled') return null
+  if (row.status !== 'Pending' || row.payment_status !== 'Incomplete') return null
   if (row.payment_intent_id) {
     const intent = await stripeRequest(env, `/v1/payment_intents/${row.payment_intent_id}`, new URLSearchParams(), 'GET')
     if (['succeeded', 'processing', 'requires_capture'].includes(intent.status)) return null
@@ -247,10 +262,12 @@ export default {
 
       // POST /api/bookings
       // Price is computed here from serviceId / exteriorAddOn / coupon — never taken from the client.
-      // payment_status always starts as 'Pay Later'; only the Stripe webhook marks it 'Paid'.
+      // Saved as a 'Pending' / 'Incomplete' draft; confirmed by Pay Later (/confirm) or the Stripe webhook.
       if (pathname === '/api/bookings' && request.method === 'POST') {
         const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
-        if (env.BOOKING_LIMITER) {
+        // Per-IP limits can be switched off with the BOOKING_LIMITS = "off" var (wrangler.jsonc).
+        const limitsOn = env.BOOKING_LIMITS !== 'off'
+        if (limitsOn && env.BOOKING_LIMITER) {
           const { success } = await env.BOOKING_LIMITER.limit({ key: ip })
           if (!success) return json({ error: 'Too many booking attempts. Please wait a minute and try again.' }, 429)
         }
@@ -282,48 +299,63 @@ export default {
 
         // Customer went back and changed details: update their unpaid draft instead of adding another booking.
         if (draft) {
-          await env.DB.prepare(
-            `UPDATE bookings SET date = ?, time = ?, service = ?, name = ?, phone = ?, email = ?,
-               vehicle = ?, address = ?, notes = ?, subtotal = ?, coupon = ?, total = ?
-             WHERE id = ? AND source = ?`
-          ).bind(...fields, subtotal, coupon, total, draft.id, SOURCE).run()
+          await env.DB.batch([
+            env.DB.prepare(
+              `UPDATE bookings SET date = ?, time = ?, service = ?, name = ?, phone = ?, email = ?,
+                 vehicle = ?, address = ?, notes = ?
+               WHERE id = ? AND source = ?`
+            ).bind(...fields, draft.id, SOURCE),
+            env.DB.prepare(`UPDATE booking_payments SET subtotal = ?, coupon = ?, total = ? WHERE booking_id = ?`)
+              .bind(subtotal, coupon, total, draft.id),
+          ])
           return json({ id: draft.id, ...result })
         }
 
-        const ipHash = await sha256Hex(`${SOURCE}:${ip}`)
-        const since = new Date(Date.now() - 86400000).toISOString()
-        const recent = await env.DB.prepare(
-          `SELECT COUNT(*) AS n FROM booking_requests WHERE source = ? AND ip_hash = ? AND created_at > ?`
-        ).bind(SOURCE, ipHash, since).first()
-        if (recent.n >= MAX_NEW_BOOKINGS_PER_IP_PER_DAY) {
-          return json({ error: 'Online booking limit reached for today. Please call us to book.' }, 429)
-        }
-
         const id = newBookingId()
-        const created_at = new Date().toISOString()
-        await env.DB.batch([
+        const created_at = sqlTimestamp()
+        const statements = [
           env.DB.prepare(
             `INSERT INTO bookings
               (id, date, time, service, name, phone, email, vehicle, address, notes, source, created_at,
-               status, payment_status, subtotal, coupon, total)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Confirmed', 'Pay Later', ?, ?, ?)`
-          ).bind(id, ...fields, SOURCE, created_at, subtotal, coupon, total),
-          env.DB.prepare(`INSERT INTO booking_requests (source, ip_hash, created_at) VALUES (?, ?, ?)`)
-            .bind(SOURCE, ipHash, created_at),
-        ])
+               status, payment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'Incomplete')`
+          ).bind(id, ...fields, SOURCE, created_at),
+          env.DB.prepare(`INSERT INTO booking_payments (booking_id, subtotal, coupon, total) VALUES (?, ?, ?, ?)`)
+            .bind(id, subtotal, coupon, total),
+        ]
+
+        if (limitsOn) {
+          const ipHash = await sha256Hex(`${SOURCE}:${ip}`)
+          const since = new Date(Date.now() - 86400000).toISOString()
+          const recent = await env.DB.prepare(
+            `SELECT COUNT(*) AS n FROM booking_requests WHERE source = ? AND ip_hash = ? AND created_at > ?`
+          ).bind(SOURCE, ipHash, since).first()
+          if (recent.n >= MAX_NEW_BOOKINGS_PER_IP_PER_DAY) {
+            return json({ error: 'Online booking limit reached for today. Please call us to book.' }, 429)
+          }
+          statements.push(env.DB.prepare(`INSERT INTO booking_requests (source, ip_hash, created_at) VALUES (?, ?, ?)`)
+            .bind(SOURCE, ipHash, new Date().toISOString()))
+        }
+        await env.DB.batch(statements)
 
         return json({ id, ...result }, 201)
       }
 
       // POST /api/bookings/:id/confirm   { email }
-      // Customer chose Pay Later and confirmed: notify GHL. (Paid bookings are notified by the Stripe webhook.)
+      // Customer chose Pay Later and confirmed: the draft becomes Confirmed / Pay Later and GHL is
+      // notified. (Paid bookings are confirmed and notified by the Stripe webhook.)
       const confirmMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/confirm$/)
       if (confirmMatch && request.method === 'POST') {
         const { email } = await request.json()
-        const booking = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
+        const draft = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
           .bind(confirmMatch[1], SOURCE).first()
-        if (!booking || booking.email !== email) return json({ error: 'Booking not found' }, 404)
-        if (booking.status === 'Cancelled') return json({ error: 'This booking was cancelled.' }, 409)
+        if (!draft || draft.email !== email) return json({ error: 'Booking not found' }, 404)
+        if (draft.status === 'Cancelled') return json({ error: 'This booking was cancelled.' }, 409)
+        await env.DB.prepare(
+          `UPDATE bookings SET status = 'Confirmed', payment_status = 'Pay Later', notes2 = 'Pay Later'
+           WHERE id = ? AND source = ? AND status = 'Pending' AND payment_status = 'Incomplete'`
+        ).bind(draft.id, SOURCE).run()
+        const booking = await env.DB.prepare(BOOKING_WITH_PAYMENT).bind(draft.id, SOURCE).first()
         ctx.waitUntil(notifyBookingConfirmed(env, booking))
         return json({ id: booking.id, confirmed: true })
       }
@@ -334,8 +366,7 @@ export default {
         return json({ error: 'Unauthorized' }, 401)
       }
       if (singleMatch && request.method === 'GET') {
-        const row = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
-          .bind(singleMatch[1], SOURCE).first()
+        const row = await env.DB.prepare(BOOKING_WITH_PAYMENT).bind(singleMatch[1], SOURCE).first()
         if (!row) return json({ error: 'Not found' }, 404)
         return json(row)
       }
@@ -361,8 +392,7 @@ export default {
         const { bookingId, coupon: couponCode } = await request.json()
         if (!bookingId) return json({ error: 'bookingId is required' }, 400)
 
-        const booking = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
-          .bind(bookingId, SOURCE).first()
+        const booking = await env.DB.prepare(BOOKING_WITH_PAYMENT).bind(bookingId, SOURCE).first()
         if (!booking) return json({ error: 'Booking not found' }, 404)
         if (booking.payment_status === 'Paid') return json({ error: 'This booking is already paid.' }, 409)
         if (booking.subtotal == null) return json({ error: 'Booking has no price on file.' }, 400)
@@ -372,8 +402,8 @@ export default {
         const amount = total * 100 // cents
         if (amount < 50) return json({ error: 'Invalid amount' }, 400)
         if (coupon !== booking.coupon || total !== booking.total) {
-          await env.DB.prepare(`UPDATE bookings SET coupon = ?, total = ? WHERE id = ? AND source = ?`)
-            .bind(coupon, total, booking.id, SOURCE).run()
+          await env.DB.prepare(`UPDATE booking_payments SET coupon = ?, total = ? WHERE booking_id = ?`)
+            .bind(coupon, total, booking.id).run()
         }
 
         // Reuse the open PaymentIntent for this booking when the amount hasn't changed;
@@ -402,8 +432,8 @@ export default {
           'metadata[phone]': booking.phone,
         })
         const intent = await stripeRequest(env, '/v1/payment_intents', params)
-        await env.DB.prepare(`UPDATE bookings SET payment_intent_id = ? WHERE id = ? AND source = ?`)
-          .bind(intent.id, booking.id, SOURCE).run()
+        await env.DB.prepare(`UPDATE booking_payments SET payment_intent_id = ? WHERE booking_id = ?`)
+          .bind(intent.id, booking.id).run()
         return json({ clientSecret: intent.client_secret, amount })
       }
 
@@ -418,18 +448,21 @@ export default {
         const obj = event.data?.object || {}
 
         if (event.type === 'payment_intent.succeeded' && obj.metadata?.source === SOURCE && obj.metadata?.bookingId) {
-          await env.DB.prepare(
-            `UPDATE bookings SET payment_status = 'Paid', payment_intent_id = ? WHERE id = ? AND source = ?`
-          ).bind(obj.id, obj.metadata.bookingId, SOURCE).run()
-          const paid = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ? AND source = ?`)
-            .bind(obj.metadata.bookingId, SOURCE).first()
+          await env.DB.batch([
+            env.DB.prepare(`UPDATE bookings SET status = 'Confirmed', payment_status = 'Paid' WHERE id = ? AND source = ?`)
+              .bind(obj.metadata.bookingId, SOURCE),
+            env.DB.prepare(`UPDATE booking_payments SET payment_intent_id = ? WHERE booking_id = ?`)
+              .bind(obj.id, obj.metadata.bookingId),
+          ])
+          const paid = await env.DB.prepare(BOOKING_WITH_PAYMENT).bind(obj.metadata.bookingId, SOURCE).first()
           if (paid) ctx.waitUntil(notifyBookingConfirmed(env, paid))
         }
 
         if (event.type === 'charge.refunded' && obj.payment_intent) {
           const status = obj.amount_refunded >= obj.amount ? 'Refunded' : 'Partially Refunded'
           await env.DB.prepare(
-            `UPDATE bookings SET payment_status = ? WHERE payment_intent_id = ? AND source = ?`
+            `UPDATE bookings SET payment_status = ?
+             WHERE id = (SELECT booking_id FROM booking_payments WHERE payment_intent_id = ?) AND source = ?`
           ).bind(status, obj.payment_intent, SOURCE).run()
         }
 
