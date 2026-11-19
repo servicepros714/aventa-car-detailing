@@ -39,9 +39,6 @@ const EXTERIOR_ADDON = { name: 'Exterior Wash', price: 50 }
 // Anti-spam: online bookings allowed per IP per 24h (the per-minute limit is BOOKING_LIMITER).
 const MAX_NEW_BOOKINGS_PER_IP_PER_DAY = 6
 
-// Must match BOOKING_WINDOW_DAYS in src/pages/steps/DateStep.jsx.
-const BOOKING_WINDOW_DAYS = 21
-
 // Must match TIME_SLOTS in src/lib/availability.js ("7:00 AM" … "7:00 PM", every 30 min).
 const TIME_SLOTS = (() => {
   const slots = []
@@ -120,10 +117,8 @@ function validateSlot(date, time) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Invalid date.'
   if (!TIME_SLOTS.includes(time)) return 'Invalid time slot.'
   const now = pacificNow()
-  const lastDate = new Date(Date.parse(`${now.date}T00:00:00Z`) + (BOOKING_WINDOW_DAYS - 1) * 86400000)
-    .toISOString().slice(0, 10)
+  // No upper limit on how far ahead customers can book (same as Alera and Apex).
   if (date < now.date) return 'That date has already passed.'
-  if (date > lastDate) return `Bookings open up to ${BOOKING_WINDOW_DAYS} days ahead.`
   if (date === now.date && slotMinutes(time) <= now.minutes) return 'That time has already passed.'
   return null
 }

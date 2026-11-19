@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  eachDayOfInterval, addMonths, isSameMonth, isBefore, addDays,
+  eachDayOfInterval, addMonths, isSameMonth, isBefore,
 } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { nowPacific, formatDateKey } from '../../lib/availability'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const BOOKING_WINDOW_DAYS = 21 // matches the shared portfolio's booking-ahead window
 
 export default function DateStep({ booking, updateBooking }) {
   const today = useMemo(() => {
@@ -15,7 +14,6 @@ export default function DateStep({ booking, updateBooking }) {
     t.setHours(0, 0, 0, 0)
     return t
   }, [])
-  const maxDate = useMemo(() => addDays(today, BOOKING_WINDOW_DAYS - 1), [today])
 
   const [viewMonth, setViewMonth] = useState(startOfMonth(today))
 
@@ -26,7 +24,6 @@ export default function DateStep({ booking, updateBooking }) {
   }, [viewMonth])
 
   const canGoPrev = isBefore(startOfMonth(today), startOfMonth(viewMonth))
-  const canGoNext = isBefore(startOfMonth(viewMonth), startOfMonth(maxDate))
 
   return (
     <div className="step-date">
@@ -46,7 +43,6 @@ export default function DateStep({ booking, updateBooking }) {
             type="button"
             className="calendar__nav"
             onClick={() => setViewMonth((m) => addMonths(m, 1))}
-            disabled={!canGoNext}
             aria-label="Next month"
           >
             <ChevronRight size={18} />
@@ -60,7 +56,8 @@ export default function DateStep({ booking, updateBooking }) {
         <div className="calendar__grid">
           {days.map((d) => {
             const inMonth = isSameMonth(d, viewMonth)
-            const inRange = !isBefore(d, today) && !isBefore(maxDate, d)
+            // Any day from today on, no upper limit (same as Alera and Apex).
+            const inRange = !isBefore(d, today)
             const key = formatDateKey(d)
             const selected = booking.date === key
             const disabled = !inMonth || !inRange
