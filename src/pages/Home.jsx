@@ -5,6 +5,7 @@ import Gallery from '../components/Gallery'
 import ServicesTabs from '../components/ServicesTabs'
 import ProcessSteps from '../components/ProcessSteps'
 import ReviewsBand from '../components/ReviewsBand'
+import Faq from '../components/Faq'
 import ContactBook from '../components/ContactBook'
 
 export default function Home() {
@@ -16,6 +17,7 @@ export default function Home() {
       <ServicesTabs />
       <ProcessSteps />
       <ReviewsBand />
+      <Faq />
       <ContactBook />
     </>
   )

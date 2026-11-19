@@ -4,6 +4,20 @@ Built to the Service Pros portfolio spec: Vite + React 18, 4-step booking flow,
 shared `detailing-bookings` D1 database, Stripe checkout with Link/Apple Pay/
 Google Pay, Cloudflare Pages + GitHub Actions.
 
+## SEO
+
+- `npm run build` = client build + SSR build + `scripts/prerender.js`, which writes static HTML for
+  every marketing page (`dist/<slug>.html`), `dist/404.html` and `dist/sitemap.xml`. The build fails
+  if a title is over 60 or a description over 160 characters.
+- Business facts, packages (also used by booking), job times, FAQ and Google reviews: `src/lib/siteConfig.js`.
+- Service and city landing pages (data): `src/lib/pages.js`, rendered by `src/pages/Landing.jsx`.
+- Head tags and schema: `src/lib/seo.js`. Styles for the SEO pieces: `src/styles/seo.css`.
+- To add a Google review: add `{ name: 'Maria G.', text: '...' }` to `REVIEWS` in `src/lib/siteConfig.js`.
+- No `public/_redirects`: Cloudflare Pages serves the `.html` files and `404.html` itself.
+  `public/_headers` keeps `*.pages.dev` out of search results.
+- Deploy is a direct upload (no Git integration): build, then
+  `CLOUDFLARE_ACCOUNT_ID=805b4baa2eb5c30a80b36ab7e9548570 npx wrangler pages deploy dist --project-name aventa-car-detailing-v2 --branch main`.
+
 ## Site identifiers (registered for this build — don't reuse elsewhere)
 
 | | |

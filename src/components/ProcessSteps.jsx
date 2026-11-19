@@ -2,10 +2,10 @@ import React from 'react'
 import './processSteps.css'
 
 const steps = [
-  { title: 'Book online', body: 'Pick a package, date, and time. Takes under two minutes.' },
-  { title: 'We confirm & arrive', body: "You'll get a text confirmation and an on-the-way heads up." },
-  { title: 'Full detail on-site', body: 'We work at your address — no drop-off, no waiting around a shop.' },
-  { title: 'Drive away happy', body: 'Quick walkthrough before we go. Not satisfied? We fix it on the spot.' },
+  { title: 'Book online', body: 'Pick a package, date and time. Any day, 7 AM to 7 PM.' },
+  { title: 'We arrive', body: 'We come to your address at the time you picked, with our own water and power.' },
+  { title: 'Full detail on-site', body: 'We work at your address: no drop-off, no waiting around a shop.' },
+  { title: 'Drive away happy', body: 'Not satisfied? Every detail comes with our satisfaction guarantee.' },
 ]
 
 export default function ProcessSteps() {
@@ -14,7 +14,6 @@ export default function ProcessSteps() {
       <div className="container">
         <span className="eyebrow-mark">How It Works</span>
         <h2 className="process__title">From booking to a clean car, four steps</h2>
-
         <ol className="process__list">
           {steps.map((s, i) => (
             <li key={s.title} className="process__step">

@@ -1,33 +1,38 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Phone, Mail, MapPin, Clock, ArrowRight } from 'lucide-react'
-import { business } from '../lib/siteConfig'
+import { Phone, MapPin, Clock, ArrowRight } from 'lucide-react'
+import { business, services } from '../lib/siteConfig'
+import { CITY_PAGES, HOME_CITY } from '../lib/pages'
 import './contactBook.css'
 
 export default function ContactBook() {
   return (
-    <section id="contact" className="section contact-book">
+    <section id="area" className="section contact-book">
       <div className="container contact-book__grid">
         <div>
-          <span className="eyebrow-mark">Get In Touch</span>
-          <h2>Serving Anaheim and the surrounding area</h2>
-          <p className="contact-book__lead">Questions about a package, or need a time that's not listed online? Call or text and we'll sort it out.</p>
+          <span className="eyebrow-mark">Service Area</span>
+          <h2>Serving Anaheim and the neighborhoods around it</h2>
+          <p className="contact-book__lead">
+            Aventa is fully mobile. We detail cars at homes and offices across {HOME_CITY}, including
+            West Anaheim, and in nearby Villa Park, North Tustin and Orange Park Acres.
+          </p>
+          <ul className="lp-chips">
+            {CITY_PAGES.map((p) => <li key={p.path}><Link to={p.path}>{p.city}</Link></li>)}
+          </ul>
           <div className="contact-book__list">
             <a href={business.phoneHref}><Phone size={17} /> {business.phone}</a>
-            <a href={`mailto:${business.email}`}><Mail size={17} /> {business.email}</a>
-            <span><MapPin size={17} /> {business.address}</span>
+            <span><MapPin size={17} /> Mobile service: we come to you</span>
             <span><Clock size={17} /> {business.hours}</span>
           </div>
         </div>
-
         <div className="quick-book">
           <span className="quick-book__eyebrow">Ready when you are</span>
           <h3>Book your detail</h3>
-          <p>Pick a package, date, and time — takes under two minutes.</p>
+          <p>Pick a package, date and time. Questions first? Call or text {business.phone}.</p>
           <ul className="quick-book__list">
-            <li>Basic Detail <span>$150</span></li>
-            <li>Premium Detail <span>$200</span></li>
-            <li>Exterior Wash <span>+$50</span></li>
+            {services.map((s) => (
+              <li key={s.id}>{s.name} <span>{s.addOn ? '+' : ''}${s.price}</span></li>
+            ))}
           </ul>
           <Link to="/book" className="btn btn-primary btn-block quick-book__btn">
             Book Online <ArrowRight size={16} />

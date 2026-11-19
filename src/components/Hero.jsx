@@ -9,13 +9,13 @@ export default function Hero() {
     <section className="hero">
       <div className="hero__copy">
         <div className="container hero__copy-inner">
-          <span className="eyebrow-mark">Premium Auto Care · Est. Anaheim</span>
-          <h1 className="hero__headline">
+          <h1 className="eyebrow-mark">Mobile car detailing in Anaheim, CA</h1>
+          <p className="hero__headline">
             Detailing that treats your car like it just left the showroom.
-          </h1>
+          </p>
           <p className="hero__sub">
-            Hand-finished interior and exterior detailing for Anaheim drivers who notice
-            the difference. Book online in under two minutes.
+            Hand-finished interior detailing, plus an optional hand wash, at your home in
+            Anaheim. We bring our own water and power; you book online.
           </p>
           <div className="hero__actions">
             <Link to="/book" className="btn btn-primary">Book Online</Link>
@@ -30,7 +30,10 @@ export default function Hero() {
         <div className="hero__visual-frame">
           <img
             src="/images/hero-tacoma-foam.jpg"
-            alt="Freshly foam-washed truck exterior at Aventa Car Detailing"
+            alt="Silver Toyota Tacoma rinsed after a foam pre-wash"
+            width="1600"
+            height="739"
+            fetchpriority="high"
             className="hero__img hero__img--desktop"
           />
         </div>

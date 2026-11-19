@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react'
 import './beforeAfterSlider.css'
 
-export default function BeforeAfterSlider({ before, after, label }) {
+export default function BeforeAfterSlider({ before, after, label, alt = 'Vehicle interior' }) {
   const [position, setPosition] = useState(50)
   const trackRef = useRef(null)
   const dragging = useRef(false)
@@ -38,9 +38,9 @@ export default function BeforeAfterSlider({ before, after, label }) {
       onTouchEnd={onUp}
     >
       {label && <span className="ba-slider__label">{label}</span>}
-      <img src={before} alt="Before detailing" className="ba-slider__img ba-slider__img--before" draggable={false} />
+      <img src={before} alt={`${alt} before detailing`} loading="lazy" className="ba-slider__img ba-slider__img--before" draggable={false} />
       <div className="ba-slider__after-wrap" style={{ clipPath: `inset(0 0 0 ${position}%)` }}>
-        <img src={after} alt="After detailing" className="ba-slider__img ba-slider__img--after" draggable={false} />
+        <img src={after} alt={`${alt} after detailing`} loading="lazy" className="ba-slider__img ba-slider__img--after" draggable={false} />
       </div>
       <div className="ba-slider__handle" style={{ left: `${position}%` }}>
         <div className="ba-slider__grip">

@@ -1,42 +1,27 @@
 import React, { useState } from 'react'
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { REVIEWS, GOOGLE_PROFILE_URL } from '../lib/siteConfig'
 import './reviewsBand.css'
 
-const reviews = [
-  {
-    name: 'Marcus T.',
-    vehicle: 'GMC Sierra Denali',
-    quote: 'They got stains out of my seats I figured were permanent. Truck looked better than the day I bought it.',
-  },
-  {
-    name: 'Priya S.',
-    vehicle: 'Toyota Tacoma',
-    quote: "Booking online took two minutes and they texted when they were on the way. Easiest appointment I've made.",
-  },
-  {
-    name: 'Daniel R.',
-    vehicle: 'Infiniti Q60',
-    quote: 'Exterior finish is showroom-level. Paid for the Premium package and it was worth every dollar.',
-  },
-]
-
+// Confirmed facts only (no ratings or counts).
 const stats = [
-  { num: '500+', label: 'Vehicles Detailed' },
-  { num: '4.9★', label: 'Average Rating' },
-  { num: '100%', label: 'Hand-Finished' },
+  { num: '$150', label: 'Interior details from' },
+  { num: 'Any size', label: 'Same price' },
+  { num: '7 days', label: '7 AM – 7 PM' },
 ]
 
+// Real Google reviews only (src/lib/siteConfig.js). With none yet, the right side
+// links to the Google profile instead.
 export default function ReviewsBand() {
   const [index, setIndex] = useState(0)
-  const review = reviews[index]
-
-  const go = (dir) => setIndex((i) => (i + dir + reviews.length) % reviews.length)
+  const review = REVIEWS[index]
+  const go = (dir) => setIndex((i) => (i + dir + REVIEWS.length) % REVIEWS.length)
 
   return (
     <section id="reviews" className="section section--dark reviews-band">
       <div className="container reviews-band__grid">
         <div className="reviews-band__stats">
-          <span className="eyebrow-mark">By The Numbers</span>
+          <span className="eyebrow-mark">At a Glance</span>
           <div className="reviews-band__stats-list">
             {stats.map((s) => (
               <div key={s.label}>
@@ -48,25 +33,39 @@ export default function ReviewsBand() {
         </div>
 
         <div className="reviews-band__carousel">
-          <div className="review-slide">
-            <div className="review-slide__stars">
-              {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={16} fill="#4FA8E0" stroke="none" />)}
+          {review ? (
+            <>
+              <div className="review-slide">
+                <div className="review-slide__stars" aria-label="5 out of 5 stars">
+                  {[1, 2, 3, 4, 5].map((i) => <Star key={i} size={16} fill="#4FA8E0" stroke="none" />)}
+                </div>
+                <p>&ldquo;{review.text}&rdquo;</p>
+                <div className="review-slide__author">
+                  <strong>{review.name}</strong>
+                  <span>Google review</span>
+                </div>
+              </div>
+              {REVIEWS.length > 1 && (
+                <div className="review-slide__controls">
+                  <button onClick={() => go(-1)} aria-label="Previous review"><ChevronLeft size={18} /></button>
+                  <div className="review-slide__dots">
+                    {REVIEWS.map((r, i) => <span key={r.name} className={i === index ? 'is-active' : ''} />)}
+                  </div>
+                  <button onClick={() => go(1)} aria-label="Next review"><ChevronRight size={18} /></button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="reviews-band__fallback">
+              <h2 className="reviews-band__title">Find us on Google</h2>
+              <p>See Aventa Car Detailing Anaheim on Google, or leave a review after your detail.</p>
             </div>
-            <p>&ldquo;{review.quote}&rdquo;</p>
-            <div className="review-slide__author">
-              <strong>{review.name}</strong>
-              <span>{review.vehicle}</span>
-            </div>
-          </div>
-          <div className="review-slide__controls">
-            <button onClick={() => go(-1)} aria-label="Previous review"><ChevronLeft size={18} /></button>
-            <div className="review-slide__dots">
-              {reviews.map((_, i) => (
-                <span key={i} className={i === index ? 'is-active' : ''} />
-              ))}
-            </div>
-            <button onClick={() => go(1)} aria-label="Next review"><ChevronRight size={18} /></button>
-          </div>
+          )}
+          {GOOGLE_PROFILE_URL && (
+            <a href={GOOGLE_PROFILE_URL} target="_blank" rel="noopener noreferrer" className="btn btn-outline reviews-band__google">
+              {review ? 'See all reviews on Google' : 'Aventa on Google'}
+            </a>
+          )}
         </div>
       </div>
     </section>

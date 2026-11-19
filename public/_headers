@@ -1,0 +1,7 @@
+# Keep the Cloudflare Pages preview URLs out of search results.
+# The real site is https://aventacardetailinganaheim.site
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex

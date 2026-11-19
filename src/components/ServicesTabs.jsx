@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ArrowRight } from 'lucide-react'
+import { Check, ArrowRight, Clock } from 'lucide-react'
 import { services } from '../lib/siteConfig'
+import { SERVICE_PAGES } from '../lib/pages'
 import './servicesTabs.css'
 
-export default function ServicesTabs() {
+// Packages + prices. Used on the home page (with links to the service pages) and on
+// every landing page (own title, no links: those pages have a "More services" row).
+export default function ServicesTabs({ title = 'One panel, every detail spelled out', links = true }) {
   const [activeId, setActiveId] = useState(services[0].id)
   const active = services.find((s) => s.id === activeId)
 
@@ -13,7 +16,8 @@ export default function ServicesTabs() {
       <div className="container">
         <div className="services-tabs__head">
           <span className="eyebrow-mark">What We Offer</span>
-          <h2>One panel, every detail spelled out</h2>
+          <h2>{title}</h2>
+          <p className="services-tabs__intro">Same price for every vehicle size. We bring our own water and power.</p>
         </div>
 
         <div className="services-tabs__layout">
@@ -37,13 +41,13 @@ export default function ServicesTabs() {
               <div>
                 <h3>{active.name}</h3>
                 <p>{active.description}</p>
+                <p className="services-tabs__time"><Clock size={14} /> {active.duration}</p>
               </div>
               <div className="services-tabs__price">
                 <span>{active.addOn ? '+' : ''}${active.price}</span>
                 {active.addOn && <em>add-on</em>}
               </div>
             </div>
-
             <ul className="services-tabs__features">
               {active.features.map((f) => (
                 <li key={f}><Check size={15} /> {f}</li>
@@ -57,6 +61,13 @@ export default function ServicesTabs() {
             Book Now <ArrowRight size={16} />
           </Link>
         </div>
+
+        {links && (
+          <nav className="seo-links" aria-label="Detailing services">
+            <span>Learn more:</span>
+            {SERVICE_PAGES.map((p) => <Link key={p.path} to={p.path}>{p.nav}</Link>)}
+          </nav>
+        )}
       </div>
     </section>
   )

@@ -8,8 +8,8 @@ const links = [
   { to: '/', label: 'Home', end: true },
   { to: '/#services', label: 'Services' },
   { to: '/#gallery', label: 'Gallery' },
-  { to: '/#reviews', label: 'Reviews' },
-  { to: '/#contact', label: 'Contact' },
+  { to: '/#faq', label: 'FAQ' },
+  { to: '/#area', label: 'Areas' },
 ]
 
 export default function Navbar() {
