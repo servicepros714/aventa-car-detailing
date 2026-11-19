@@ -38,6 +38,12 @@ export function formatDateKey(date) {
   return format(date, 'yyyy-MM-dd')
 }
 
+// Same-day bookings need at least 2 hours notice (same as Alera and Apex).
+// Must match LEAD_MINUTES in worker/index.js.
+const LEAD_MINUTES = 120
+
+// True when a slot can't be booked anymore: a past day, or today and less than
+// LEAD_MINUTES from now (California time).
 export function isSlotInPast(dateKey, slotLabel) {
   const today = nowPacific()
   const todayKey = formatDateKey(today)
@@ -48,5 +54,5 @@ export function isSlotInPast(dateKey, slotLabel) {
   if (ampm === 'AM' && h === 12) h = 0
   const slotDate = new Date(today)
   slotDate.setHours(h, m, 0, 0)
-  return isBefore(slotDate, today)
+  return slotDate.getTime() - today.getTime() < LEAD_MINUTES * 60 * 1000
 }

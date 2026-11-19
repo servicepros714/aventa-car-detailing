@@ -119,9 +119,13 @@ function validateSlot(date, time) {
   const now = pacificNow()
   // No upper limit on how far ahead customers can book (same as Alera and Apex).
   if (date < now.date) return 'That date has already passed.'
-  if (date === now.date && slotMinutes(time) <= now.minutes) return 'That time has already passed.'
+  if (date === now.date && slotMinutes(time) - now.minutes < LEAD_MINUTES) return 'Same-day bookings need at least 2 hours notice.'
   return null
 }
+
+// Same-day bookings need at least 2 hours notice (same as Alera and Apex).
+// Must match LEAD_MINUTES in src/lib/availability.js.
+const LEAD_MINUTES = 120
 
 async function sha256Hex(text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
