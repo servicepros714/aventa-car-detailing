@@ -102,4 +102,9 @@ export const FAQS = [
 // Real customer reviews only, copied from the Google Business Profile
 // (first name + last initial, spelling typos fixed). While empty, the Reviews section
 // links to the Google profile. To add one: { name: 'Maria G.', text: '...' }.
-export const REVIEWS = []
+export const REVIEWS = [
+  { name: 'Itzel F.', text: 'Amazing job definitely worth it and definitely coming back!' },
+  { name: 'Jorge F.', text: 'The interior cleaning was spot on! Such a good service and very recommended' },
+  { name: 'Joel D.', text: 'The staff is really helpful!' },
+  { name: 'Eliseo E.', text: 'Great customer service and time accurate.' },
+]
